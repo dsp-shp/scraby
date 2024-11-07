@@ -1,0 +1,15 @@
+site_name: scrapeeeon
+site_description: Project documentation with Markdown.
+repo_url: https://github.com/dsp-shp/scrapeeeon
+repo_name: dsp-shp/scrapeeeon
+# Extra properties
+theme:
+  name: material
+  locale: en
+extra_css:
+    - css/extra.css
+# Navigation
+nav:
+  - "Overview": index.md
+  - Get started:
+    - quick_start.md
