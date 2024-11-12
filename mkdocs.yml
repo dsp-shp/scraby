@@ -1,7 +1,7 @@
-site_name: scrapeeeon
+site_name: scraby
 site_description: Project documentation with Markdown.
-repo_url: https://github.com/dsp-shp/scrapeeeon
-repo_name: dsp-shp/scrapeeeon
+repo_url: https://github.com/dsp-shp/scraby
+repo_name: dsp-shp/scraby
 # Extra properties
 theme:
   name: material
