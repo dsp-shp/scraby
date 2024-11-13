@@ -24,6 +24,7 @@ class ScrabyDialect(Dialect):
         TokenType.ORDER_BY,
         TokenType.LIMIT,
         TokenType.ALIAS,
+        TokenType.COMMA,
     }
     """ These keywords are alpha strings that can be used in query and that will
         break tag construction: "... mod<div FROM ..." -> less than and not a tag
@@ -45,7 +46,7 @@ class ScrabyDialect(Dialect):
     """ All allowed keywords including single-symbol tokens """
 
     #  TODO: add all other
-    TAGS = ("a", "div",)
+    TAGS = ("a", "div", "span")
     """ All posible HTML tags """
 
     class ScrabyGenerator(Generator):
@@ -58,62 +59,32 @@ class ScrabyDialect(Dialect):
 
     class ScrabyParser(Parser):
         """ Custom parser used to support correct parsing of new features """
-        #  TODO: make statements LOAD(...).(smth)... parseable
-        #  TODO: make SELECT LOAD(...) AS "..." ... parseable
-        def _parse_load(self):
-            this = self._parse_assignment()
+        FUNC_TOKENS = {*Parser.FUNC_TOKENS, TokenType.LOAD,}
 
-            #  INFO: with only url defined returns exp.Paren instead of exp.Tuple
-            if isinstance(this, exp.Paren) and not this.args.get('expressions'):
-                this = exp.Tuple(expressions=[
-                    this.this,
-                    exp.Neg(this=exp.Literal(this='1', is_string=False))
-                ])
+        def _parse_loadpage(self, e: exp.Expression) -> exp.Expression:
+            """ Parse LOAD expression
 
-            if len(this.expressions) not in (1, 2):
-                raise ParseError('Bad arguments for LOAD operator')
-            this, expression, *_ = this.expressions
+            """
+            if len(e.expressions) not in (1, 2):
+                raise ParseError('Bad arguments for LOAD function')
 
-            #  TODO: validate url & pages_num types
+            this, expression, *_ = [
+                *e.expressions,
+                exp.Neg(this=exp.Literal(this='1', is_string=False))
+            ]
+            if not this.find(exp.Literal).is_string:
+                raise TypeError('Bad type for arguments')
+            if expression.find(exp.Literal).is_string:
+                raise TypeError('Bad type for arguments')
 
-            return LoadPage(this=this, expression=expression)
+            return self.expression(LoadPage, this=this, expression=expression)
 
-        def _parse_from(
-            self,
-            joins: bool = False,
-            skip_from_token: bool = False
-        ) -> t.Optional[exp.From]:
-            if not skip_from_token and not self._match(TokenType.FROM):
-                return None
-            if self._match(TokenType.LOAD):
-                return self._parse_load()
-            return self.expression(
-                exp.From, comments=self._prev_comments, this=self._parse_table(joins=joins)
-            )
+        def _parse_function(self, *args, **kwargs) -> t.Optional[exp.Expression]:
+            e = super()._parse_function(*args, **kwargs)
+            if e and isinstance(e, exp.Anonymous) and e.this == 'LOAD':
+                e = self._parse_loadpage(e)
+            return e
 
-        def _parse_csv(
-            self,
-            parse_method: t.Callable,
-            sep: TokenType = TokenType.COMMA
-        ) -> t.List[exp.Expression]:
-            parse_result = parse_method()
-            items = [parse_result] if parse_result is not None else []
-
-            while self._match(sep):
-                if self._match(TokenType.LOAD):
-                    items.append(self._parse_load())
-                else:
-                    self._add_comments(parse_result)
-                    parse_result = parse_method()
-                    if parse_result is not None:
-                        items.append(parse_result)
-
-            return items
-
-        def _parse_expressions(self) -> t.List[exp.Expression]:
-            if self._match(TokenType.LOAD):
-                return self._parse_csv(self._parse_load)
-            return self._parse_csv(self._parse_expression)
 
     #  INFO: overriden in terms of defining custom parser & generator properties
     def __init__(self, *args, **kwargs) -> None:
@@ -132,7 +103,7 @@ class ScrabyDialect(Dialect):
         
         """
         tokens = self.tokenize(sql)
-        # print('\n'.join(str(x) for x in tokens))
+        print('\n'.join(str(x) for x in tokens))
 
         #  FIX: sqlglot & SQL dont handle tags, so it should be parsed manually
         #  WARNING: end counts as included: ... text: <, start: 13, end: 13, ...
@@ -144,6 +115,7 @@ class ScrabyDialect(Dialect):
             if x.token_type == TokenType.LT \
             and tokens[i+1].start == x.end + 1 \
             and tokens[i+1].text in self.TAGS:
+                print(x.text)
                 tag_tokens: list[Token] = []
                 _tokens = deepcopy(tokens[i:])
                 while _tokens:
@@ -169,6 +141,7 @@ class ScrabyDialect(Dialect):
                         end=tag_tokens[-1].end+1
                     )]
 
+        print('\n' + '\n'.join(str(x) for x in tokens))
         result = self.parser(**opts).parse(tokens, sql)
         return result
 
