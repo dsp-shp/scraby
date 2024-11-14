@@ -1,5 +1,4 @@
 from copy import deepcopy
-from enum import Enum
 import typing as t
 import re
 
@@ -7,150 +6,38 @@ from sqlglot import exp, Generator
 from sqlglot.dialects import Dialect
 from sqlglot.parser import Parser, ParseError
 from sqlglot.tokens import Token, TokenType, Tokenizer, TokenError
+from scraby.utils.html import HTMLTag
 
-
-class HTMLTag(Enum):
-    """ Enumeration of HTML tags """
-    ABBREVIATION = 'abbr'
-    ACRONYM = 'acronym'
-    ADDRESS = 'address'
-    ANCHOR = 'a'
-    APPLET = 'applet'
-    AREA = 'area'
-    ARTICLE = 'article'
-    ASIDE = 'aside'
-    AUDIO = 'audio'
-    BASE = 'base'
-    BASEFONT = 'basefont'
-    BDI = 'bdi'
-    BDO = 'bdo'
-    BGSOUND = 'bgsound'
-    BIG = 'big'
-    BLOCKQUOTE = 'blockquote'
-    BODY = 'body'
-    BOLD = 'b'
-    BREAK = 'br'
-    BUTTON = 'button'
-    CAPTION = 'caption'
-    CANVAS = 'canvas'
-    CENTER = 'center'
-    CITE = 'cite'
-    CODE = 'code'
-    COLGROUP = 'colgroup'
-    COLUMN = 'col'
-    DATA = 'data'
-    DATALIST = 'datalist'
-    DD = 'dd'
-    DEFINE = 'dfn'
-    DELETE = 'del'
-    DETAILS = 'details'
-    DIALOG = 'dialog'
-    DIR = 'dir'
-    DIV = 'div'
-    DL = 'dl'
-    DT = 'dt'
-    EMBED = 'embed'
-    FIELDSET = 'fieldset'
-    FIGCAPTION = 'figcaption'
-    FIGURE = 'figure'
-    FONT = 'font'
-    FOOTER = 'footer'
-    FORM = 'form'
-    FRAME = 'frame'
-    FRAMESET = 'frameset'
-    HEAD = 'head'
-    HEADER = 'header'
-    HEADING1 = 'h1'
-    HEADING2 = 'h2'
-    HEADING3 = 'h3'
-    HEADING4 = 'h4'
-    HEADING5 = 'h5'
-    HEADING6 = 'h6'
-    HGROUP = 'hgroup'
-    HR = 'hr'
-    HTML = 'html'
-    IFRAMES = 'iframe'
-    IMAGE = 'img'
-    INPUT = 'input'
-    INS = 'ins'
-    ISINDEX = 'isindex'
-    ITALIC = 'i'
-    KBD = 'kbd'
-    KEYGEN = 'keygen'
-    LABEL = 'label'
-    LEGEND = 'legend'
-    LIST = 'li'
-    MAIN = 'main'
-    MARK = 'mark'
-    MARQUEE = 'marquee'
-    MENUITEM = 'menuitem'
-    META = 'meta'
-    METER = 'meter'
-    NAV = 'nav'
-    NOBREAK = 'nobr'
-    NOEMBED = 'noembed'
-    NOSCRIPT = 'noscript'
-    OBJECT = 'object'
-    OPTGROUP = 'optgroup'
-    OPTION = 'option'
-    OUTPUT = 'output'
-    PARAGRAPHS = 'p'
-    PARAM = 'param'
-    PHRASE = 'em'
-    PRE = 'pre'
-    PROGRESS = 'progress'
-    Q = 'q'
-    RP = 'rp'
-    RT = 'rt'
-    RUBY = 'ruby'
-    S = 's'
-    SAMP = 'samp'
-    SCRIPT = 'script'
-    SECTION = 'section'
-    SMALL = 'small'
-    SOURCE = 'source'
-    SPACER = 'spacer'
-    SPAN = 'span'
-    STRIKE = 'strike'
-    STRONG = 'strong'
-    STYLE = 'tagname'
-    SUMMARY = 'summary'
-    SVG = 'svg'
-    TABLE = 'table'
-    TBODY = 'tbody'
-    TD = 'td'
-    TEMPLATE = 'template'
-    TFOOT = 'tfoot'
-    TH = 'th'
-    THEAD = 'thead'
-    TIME = 'time'
-    TITLE = 'title'
-    TR = 'tr'
-    TRACK = 'track'
-    TT = 'tt'
-    UNDERLINE = 'u'
-    VAR = 'var'
-    VIDEO = 'video'
-    WBR = 'wbr'
-    XMP = 'xmp'
-
-    # def __str__(self) -> str:
-    #     return self.value if isinstance(self, HTMLTag) else self
-
-    @classmethod
-    def values(cls) -> list[str]:
-        return [x.value for x in cls]
 
 class TagAttr(exp.Expression):
-    """ Expression of the HTML tag' attribute """
+    """ Expression of the HTML tag' attribute 
+
+    Parameters:
+        this (str): stands for attribute name, e.g. "id", "class", "href", ...
+        expression (str): stands for attribute value, e.g. "scrollable", "main", ...
+        is_regular (bool): is expression r-prefixed regexp string or not
+
+    """
     arg_types = {"this": True, "expression": False, "is_regular": False}
 
 class Tag(exp.Expression):
-    """ Expression of the HTML tag """
+    """ Expression of the HTML tag 
+
+    Parameters:
+        this (HTMLTag): enum element specifying this string tag, e.g. HTMLTag.DIV
+        expression (TagAttr): expression specifying tag attributes
+
+    """
     arg_types = {"this": True, "expressions": False}
 
 class LoadPage(exp.Expression):
-    """ Expression of the page loading function LOAD """
+    """ Expression of the page loading function LOAD 
+
+    Parameters:
+        this (exp.Literal): stands for url string, e.g. "https://example.org"
+        expression (exp.Literal): stands for number of pages from first to scrap
+
+    """
     arg_types = {"this": True, "expression": False}
 
 class ScrabyDialect(Dialect):
@@ -168,14 +55,18 @@ class ScrabyDialect(Dialect):
         TokenType.ALIAS,
         TokenType.COMMA,
     }
-    """ These keywords are alpha strings that can be used in query and that will
-        break tag construction: "... mod<div FROM ..." -> less than and not a tag
+    """ Query alpha strings that break tag construction
+
+    Example: in string "... mod<div FROM ..." tag construction starts at "<" point
+    and breaks on alpha "FROM" keyword, which indicates that this part is a query
+    part rather than a tag internals.
+    
     """
 
     KEYWORDS = {
-        ### add single-symbol kws
+        # add single-symbol kws
         *Tokenizer.SINGLE_TOKENS.values(),
-        ### add punctuation kws
+        # add punctuation kws
         *{v for k,v in Tokenizer.KEYWORDS.items() if not k.isalpha()},
         *ALPHA_KEYWORDS,
         TokenType.STRING,
@@ -187,11 +78,17 @@ class ScrabyDialect(Dialect):
     }
     """ All allowed keywords including single-symbol tokens """
 
-    TAGS = {*HTMLTag.__members__}
-    """ All posible HTML tags """
+    TAGS = {
+        *HTMLTag.__members__
+    }
+    """ All posible HTML tags taken from HTMLTag enum """
 
     class ScrabyGenerator(Generator):
-        """ Custom generator with support of printing syntax trees  """
+        """ Custom SQLGlot generator
+
+        Basically used for correct printing of added and modified expressions.
+
+        """
         def loadpage_sql(self, expression: LoadPage) -> str:
             this = self.sql(expression, "this")
             expr = self.sql(expression, "expression")
@@ -199,6 +96,7 @@ class ScrabyDialect(Dialect):
             return f"LOAD({this}{expr})"
 
         def tag_sql(self, expression: Tag) -> str:
+            #  WARNING: Tag.this should always be HTMLTag enum object
             this = expression.this.value
             attributes = ' '.join(map(
                 lambda x: f"{x.this}=\"{x.expression}\"",
@@ -208,19 +106,37 @@ class ScrabyDialect(Dialect):
             return f"<{this}{attributes}>"
 
     class ScrabyParser(Parser):
-        """ Custom parser used to support correct parsing of new features """
+        """ Custom SQLGLot parser 
+
+        Basically used for correct parsing of added or modified expressions.
+        
+        Currently Scraby overrides:
+            LOAD: to define url and pages number parameters
+            TAG: to fully represent HTML tags and their children elements
+
+        """
+        # Make LOAD operator a function, so it could be correctly parsed
         FUNC_TOKENS = {*Parser.FUNC_TOKENS, TokenType.LOAD,}
-        #  INFO: there are usages of a default exp.Tag in Parser
+        # Get rid of default exp.Tag usages in Parser to overwrite it's behavior
         DB_CREATABLES = {x for x in Parser.DB_CREATABLES if x not in (TokenType.TAG,)}
         CREATABLES = {x for x in Parser.CREATABLES if x not in (TokenType.TAG,)}
 
         def _parse_tag(self, tag: str) -> Tag:
-            """ Parse HTML tags as if they are normal attributes/columns """
+            """ Parse HTML tag as expression
+
+            Converts string tags into special expressions which are further used
+            as normal SQL attributes/columns.
+
+            """
             def _parse_tagattr(
                 name_or_namevalue: str,
                 value: t.Optional[str] = None
             ) -> TagAttr:
-                """ Convert 'name="value"' string into TagAttr expression """
+                """ Parse HTML tag' attributes as expression
+
+                Converts 'name="value"'-like strings into TagAttr expressions.
+
+                """
                 if not value:
                     name_or_namevalue, value = name_or_namevalue.split('=', 1)
                 return self.expression(
@@ -238,9 +154,7 @@ class ScrabyDialect(Dialect):
             return self.expression(Tag, this=HTMLTag(name), expressions=expressions)
 
         def _parse_loadpage(self, e: exp.Expression) -> exp.Expression:
-            """ Parse LOAD expression
-
-            """
+            """ Parse LOAD stmt as expression """
             if len(e.expressions) not in (1, 2):
                 raise ParseError('Bad arguments for LOAD function')
 
@@ -262,7 +176,7 @@ class ScrabyDialect(Dialect):
             return e
 
         def _parse_identifier(self) -> t.Optional[exp.Expression]:
-            if Tag.__name__ in self._curr.comments and self._match(TokenType.VAR):
+            if self._curr and Tag.__name__ in self._curr.comments and self._match(TokenType.VAR):
                 #  INFO: dont forget to remove this TAG comment
                 self._prev.comments.remove(Tag.__name__)
                 return self._parse_tag(self._prev.text)
