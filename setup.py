@@ -2,7 +2,7 @@ from os import path
 from setuptools import find_packages, setup
 
 
-long_description = open("README.md", 'r').read() if path.exists('README.md') else ""
+long_description = open("README.md", "r").read() if path.exists('README.md') else ""
 
 setup(
     name="scraby",
@@ -17,23 +17,19 @@ setup(
     url="https://github.com/dsp-shp/scraby",
     packages=find_packages(exclude=["docs", "docs.*", "tests", "tests.*"]),
     package_data={"": ["examples/**"]},
-    entry_points={
-        "console_scripts": [
-            "scraby = scraby.main:cli",
-        ],
-    },
+    # entry_points={
+    #     "console_scripts": [
+    #         "scraby = scraby.utils:cli",
+    #     ],
+    # },
     python_requires=">=3.7",
     install_requires=[
-        "beautifulsoup4",
-        "click",
-        "duckdb",
-        "pytest-playwright",
         "sqlglot==25.29.0",
     ],
     extras_require={
         "dev": [
-            "mkdocs",
-            "mkdocs-material",
+            "mypy",
+            "pylint",
             "pytest",
         ],
     },
