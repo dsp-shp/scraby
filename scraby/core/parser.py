@@ -1,7 +1,7 @@
-from copy import deepcopy
-import typing as t
 import re
+import typing as t
 
+from copy import deepcopy
 from sqlglot import exp, Generator
 from sqlglot.dialects import Dialect
 from sqlglot.parser import Parser, ParseError
@@ -20,6 +20,7 @@ class TagAttr(exp.Expression):
     """
     arg_types = {"this": True, "expression": False, "is_regular": False}
 
+
 class Tag(exp.Expression):
     """ Expression of the HTML tag 
 
@@ -28,7 +29,7 @@ class Tag(exp.Expression):
         expression (TagAttr): expression specifying tag attributes
 
     """
-    arg_types = {"this": True, "expressions": False}
+
 
 class LoadPage(exp.Expression):
     """ Expression of the page loading function LOAD 
@@ -39,6 +40,7 @@ class LoadPage(exp.Expression):
 
     """
     arg_types = {"this": True, "expression": False}
+
 
 class ScrabyDialect(Dialect):
     """ Custom SQLGlot dialect with handling of web-related things """
@@ -182,7 +184,6 @@ class ScrabyDialect(Dialect):
                 return self._parse_tag(self._prev.text)
             return super()._parse_identifier()
 
-
     #  INFO: overriden in terms of defining custom parser & generator properties
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -200,7 +201,6 @@ class ScrabyDialect(Dialect):
         
         """
         tokens = self.tokenize(sql)
-        # print('\n'.join(str(x) for x in tokens))
 
         #  FIX: sqlglot & SQL dont handle tags, so it should be parsed manually
         #  WARNING: end counts as included: ... text: <, start: 13, end: 13, ...
@@ -243,6 +243,7 @@ class ScrabyDialect(Dialect):
 
 
 dialect = ScrabyDialect()
+
 
 def parse(sql: str, **kwargs) -> list[t.Optional[exp.Expression]]:
     return dialect.parse(sql, **kwargs)
