@@ -6,8 +6,8 @@ env:
   DEFAULT_PYTHON: '3.11'
 
 jobs:
-  setup:
-    name: Setup
+  test-parser:
+    name: Test parser
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -19,11 +19,6 @@ jobs:
       - name: Upgrade pip
         run: pip install --upgrade pip setuptools wheel
       - name: Set up
-        run: pip install -e . -e ./tests
-  test-parser:
-    name: Test parser
-    runs-on: ubuntu-latest
-    needs: [setup]
-    steps:
+        run: pip install -e . -e ./tests    
       - name: Run parsing tests
         run: pytest ./tests/core/parser -vv
