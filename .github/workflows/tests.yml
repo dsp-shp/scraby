@@ -1,0 +1,29 @@
+name: Tests
+
+on: [push]
+
+env:
+  DEFAULT_PYTHON: '3.11'
+
+jobs:
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+      - name: Upgrade pip
+        run: pip install --upgrade pip setuptools wheel
+      - name: Set up
+        run: pip install -e . -e ./tests
+  test-parser:
+    name: Test parser
+    runs-on: ubuntu-latest
+    needs: [setup]
+    steps:
+      - name: Run parsing tests
+        run: pytest ./tests/core/parser -vv
