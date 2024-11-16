@@ -21,4 +21,4 @@ jobs:
       - name: Set up
         run: pip install -e . -e ./tests    
       - name: Run parsing tests
-        run: pytest ./tests/core/parser -vv
+        run: pytest ./tests/core/test_parser.py -vv
